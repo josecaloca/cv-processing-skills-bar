@@ -5,7 +5,31 @@ import re
 ##############################################################################
 ##############################################################################
 
-def create_skills_list(data, start_keyword, end_keyword):
+def create_skills_list(data : dict, 
+                       start_keyword : str, 
+                       end_keyword : str) -> list:
+    """
+    Extracts a list of skills from a dictionary containing text, 
+    using specified start and end keywords to locate the skills section.
+
+    The function searches for the start and end keywords within the text 
+    to determine the section where skills are listed. It then iterates through 
+    this section to compile a list of skills, filtering out any known 'bugged' texts 
+    and ensuring only valid words are included. The skills are cleaned, joined, 
+    and transformed to lowercase to form a finalized list of skills.
+
+    Args:
+        data (dict): A dictionary where the text containing potential skills is 
+                     located under the key 'text', which maps to a list of strings.
+        start_keyword (str): A string that marks the beginning of the skills section 
+                             in the text.
+        end_keyword (str): A string that signifies the end of the skills section 
+                           in the text.
+
+    Returns:
+        list: A list of strings, where each string is a skill extracted from the text. 
+              The skills are in lowercase and extraneous whitespace is removed.
+    """
     # Initialize an empty list to hold skills
     skills_list = []
 
@@ -40,44 +64,59 @@ def create_skills_list(data, start_keyword, end_keyword):
 ##############################################################################
 ##############################################################################
 
-def calculate_bar_length_and_ratio(pixels : np.ndarray, 
-                                   bar_value : int, 
-                                   tolerance : int = 10) -> tuple:
-    """_summary_
+def calculate_bar_length_and_ratio(pixels: np.ndarray, 
+                                   bar_value: int, 
+                                   tolerance: int = 10) -> tuple:
+    """
+    Calculates the length of a graphical bar in an image and the ratio of pixels matching the bar's intensity.
+
+    This function analyzes a one-dimensional array of grayscale pixel intensities representing a bar in an image.
+    It identifies the length of the bar based on the presence of pixel intensities within a specified range centered
+    on a given bar intensity value. The function also computes the ratio of the number of pixels with the bar's intensity
+    to the total length of the bar. This can be useful for analyzing the intensity profile of image elements.
 
     Args:
-        pixels (numpy.ndarray): List of pixel values in gray scale (0-255) where the bar is present
-        bar_value (_type_): Light intensity of the bar. This is defined as the most common pixel value in pixels array which is not equal to 255 (white)
-        tolerance (int, optional): Number of colour intensity values around the bar value due to anti-aliasing, shadows, or gradients. 
-        If the bar value is 165 and tolerance is set at 10, then all pixels with light 10 values above and below the bar value will be considered. Defaults to 10.
+        pixels (np.ndarray): A 1D numpy array of pixel values in grayscale (0-255) representing the intensity profile along a bar.
+        bar_value (int): The intensity value of the bar which is the target for the count. This value is typically
+                         the most common pixel intensity within the bar region, excluding pure white (255).
+        tolerance (int, optional): A tolerance range around the bar_value to account for variations due to anti-aliasing, shadows, 
+                                   or gradients. For example, with a bar_value of 165 and a tolerance of 10, pixels with intensities 
+                                   from 155 to 175 will be counted as part of the bar. Defaults to 10.
 
     Returns:
-        tuple: lenght of the bar, how many pixels are of the bar_value, and the ratio of bar_value pixels to the bar length.
+        tuple: A tuple containing three elements:
+               - The length of the bar in pixels.
+               - The count of pixels within the tolerance range of the bar's intensity value.
+               - The ratio of pixels matching the bar's intensity to the total bar length.
     """
-    bar_start = -1
-    bar_end = -1
-    bar_value_count = 0
+    bar_start = -1  # Initialize the start of the bar to an invalid index
+    bar_end = -1  # Initialize the end of the bar to an invalid index
+    bar_value_count = 0  # Initialize the count of pixels with the bar's intensity
 
     # Iterate over the pixel values to find the bar length and count of bar_value pixels
     for i, pixel in enumerate(pixels):
+        # Check if the current pixel falls within the bar's intensity range
         if bar_start == -1 and (bar_value - tolerance) <= pixel <= (bar_value + tolerance):
-            bar_start = i  # Start of the bar (shadow or gradient included)
-        
+            bar_start = i  # Mark the start of the bar
+
+        # Check if we've found the end of the bar based on a white gap
         if bar_start != -1 and pixel == 255:
-            # Check if we've encountered a significant gap of white pixels to mark the end of the bar
+            # If the next pixel is also white, consider it the end of the bar
             if i + 1 < len(pixels) and pixels[i + 1] == 255:
                 bar_end = i
                 break
 
+        # Count the pixels that fall within the bar's intensity range
         if (bar_value - tolerance) <= pixel <= (bar_value + tolerance):
             bar_value_count += 1
 
-    # If the bar doesn't end in the given pixel array, we set the end to the last pixel
+    # If the bar end wasn't found in the loop, set it to the last pixel (if the bar has started)
     if bar_end == -1 and bar_start != -1:
         bar_end = len(pixels) - 1
 
-    # Calculate the bar length and the ratio
+    # Calculate the bar length; if the bar hasn't started, bar_length is 0
     bar_length = bar_end - bar_start if bar_start != -1 else 0
+    # Calculate the ratio of pixels with the bar's intensity to the total bar length
     ratio = bar_value_count / bar_length if bar_length > 0 else 0
 
     return bar_length, bar_value_count, ratio
